@@ -1,2 +1,3 @@
 # yi-static
-My static yi configuration
+
+My static (no Dyre) yi configuration

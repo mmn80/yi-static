@@ -1,0 +1,8 @@
+packages:
+- '.'
+extra-deps:
+- yi-0.12.5
+flags:
+  yi:
+    hint: false
+resolver: lts-5.4
