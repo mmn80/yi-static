@@ -1,11 +1,14 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-import Control.Monad.State   (get, put)
-import Control.Monad         (when)
-import Data.List             (intersperse)
-import System.Console.Docopt
-import System.Environment    (getArgs)
-import Yi
+import           Control.Applicative   ((<|>))
+import           Control.Monad         (when)
+import           Control.Monad.State   (get, put)
+import           Data.List             (intersperse)
+import           System.Console.Docopt
+import           System.Environment    (getArgs)
+import           Yi
+import qualified Yi.Keymap.Emacs       as E
+import           Yi.Keymap.Emacs.Utils (findFileNewTab)
 
 help :: Docopt
 help = [docopt|
@@ -28,10 +31,25 @@ main = do
 
 myConfig :: [Action] -> Config
 myConfig actions = defaultEmacsConfig
-  { configCheckExternalChangesObsessively = False
+  { defaultKm = myKeymapSet
+  , configCheckExternalChangesObsessively = False
   , startActions =
       (EditorA (do
         e <- get
         put e { maxStatusHeight = 30 }))
     : actions
   }
+
+myKeymapSet :: KeymapSet
+myKeymapSet = E.mkKeymap $ E.defKeymap `override` \sup _ ->
+  sup { E._eKeymap = E._eKeymap sup <|> myKeymap }
+
+myKeymap :: Keymap
+myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
+                  , ctrl (spec KPageUp)   ?>>! nextTabE
+                  , ctrlCh 'x'            ?>>  ctrlX
+                  ]
+  where ctrlX = choice
+                  [ char 'f'              ?>>! findFileNewTab
+                  , ctrlCh 'd'            ?>>! deleteTabE
+                  ]
