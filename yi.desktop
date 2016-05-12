@@ -1,0 +1,10 @@
+[Desktop Entry]
+Encoding=UTF-8
+Version=1.0
+Type=Application
+NoDisplay=false
+Exec=gnome-terminal --profile=Yi -e "yi %f"
+Name=Yi Editor
+Comment=Open the Yi text editor
+Icon=/home/calin/src/yi/art/yi+lambda-fat-64.png
+Terminal=false
