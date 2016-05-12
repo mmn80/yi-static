@@ -26,4 +26,6 @@ executable yi
   ghc-options: -O2 -threaded -Wall -ferror-spans -fcontext-stack=110
   build-depends:
     base             >= 4.8 && < 5,
+    mtl,
+    docopt           >= 0.7,
     yi
