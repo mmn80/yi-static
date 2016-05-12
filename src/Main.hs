@@ -1,14 +1,18 @@
 {-# LANGUAGE QuasiQuotes #-}
 
-import           Control.Applicative   ((<|>))
-import           Control.Monad         (when)
-import           Control.Monad.State   (get, put)
-import           Data.List             (intersperse)
+import           Control.Applicative    ((<|>))
+import           Control.Monad          (when)
+import           Control.Monad.State    (get, put)
+import           Control.Monad.State    (execStateT)
+import           Data.List              (intersperse)
 import           System.Console.Docopt
-import           System.Environment    (getArgs)
+import           System.Environment     (getArgs)
 import           Yi
-import qualified Yi.Keymap.Emacs       as E
-import           Yi.Keymap.Emacs.Utils (findFileNewTab)
+import           Yi.Command             (shellCommandE)
+import           Yi.Config.Simple.Types (ConfigM (..))
+import qualified Yi.Keymap.Emacs        as E
+import           Yi.Keymap.Emacs.Utils  (findFileNewTab)
+import           Yi.Mode.Haskell
 
 help :: Docopt
 help = [docopt|
@@ -27,7 +31,17 @@ main = do
     exitWithUsage help
   let files = getAllArgs args (argument "file")
       actions = intersperse (EditorA newTabE) (map (YiA . openNewFile) files)
-  startEditor (myConfig actions) Nothing
+  cfg <- execStateT (runConfigM publish) (myConfig actions)
+  startEditor cfg Nothing
+
+publish :: ConfigM ()
+publish = do
+  publishAction "shellCommandE"      shellCommandE
+  publishAction "ghciSend"           ghciSend
+  publishAction "ghciLoadBuffer"     ghciLoadBuffer
+  publishAction "ghciInferType"      ghciInferType
+  publishAction "ghciSetProcessName" ghciSetProcessName
+  publishAction "ghciSetProcessArgs" ghciSetProcessArgs
 
 myConfig :: [Action] -> Config
 myConfig actions = defaultEmacsConfig
