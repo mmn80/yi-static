@@ -1,3 +1,3 @@
 # yi-static
 
-My static (no Dyre) yi configuration
+My static yi setup (no *dyre*, no *hint*, no *cabal-install*).
