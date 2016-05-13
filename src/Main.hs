@@ -13,6 +13,7 @@ import           Yi.Config.Simple.Types (ConfigM (..))
 import qualified Yi.Keymap.Emacs        as E
 import           Yi.Keymap.Emacs.Utils  (findFileNewTab)
 import           Yi.Mode.Haskell
+import           Yi.Command             (searchSources)
 
 help :: Docopt
 help = [docopt|
@@ -42,16 +43,22 @@ publish = do
   publishAction "ghciInferType"      ghciInferType
   publishAction "ghciSetProcessName" ghciSetProcessName
   publishAction "ghciSetProcessArgs" ghciSetProcessArgs
+  publishAction "cd"                 cd
+  publishAction "pwd"                pwd
+  publishAction "searchSources"      searchSources
+  publishAction "nextWinE"           nextWinE
 
 myConfig :: [Action] -> Config
 myConfig actions = defaultEmacsConfig
-  { defaultKm = myKeymapSet
+  { modeTable = fmap configureIndent (modeTable defaultEmacsConfig)
+  , defaultKm = myKeymapSet
   , configCheckExternalChangesObsessively = False
   , startActions =
       (EditorA (do
         e <- get
         put e { maxStatusHeight = 30 }))
     : actions
+  , configRegionStyle = Exclusive
   }
 
 myKeymapSet :: KeymapSet
@@ -61,9 +68,20 @@ myKeymapSet = E.mkKeymap $ E.defKeymap `override` \sup _ ->
 myKeymap :: Keymap
 myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
                   , ctrl (spec KPageUp)   ?>>! nextTabE
+                  , meta (spec KDown)     ?>>! nextWinE
+                  , metaCh 's'            ?>>! searchSources
+                  , metaCh '`'            ?>>! shellCommandE
                   , ctrlCh 'x'            ?>>  ctrlX
                   ]
   where ctrlX = choice
                   [ char 'f'              ?>>! findFileNewTab
                   , ctrlCh 'd'            ?>>! deleteTabE
                   ]
+
+configureIndent :: AnyMode -> AnyMode
+configureIndent = onMode $ \m ->
+  m { modeIndentSettings = IndentSettings { expandTabs = True
+                                          , shiftWidth = 2
+                                          , tabSize    = 2
+                                          }
+    }

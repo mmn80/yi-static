@@ -1,7 +1,7 @@
 # Keys that are wrongly mapped by vtty
 
 | Combo  | As     |
-===================
+| ------ | ------ |
 | C-i    | Tab    |
 | C-h    | BS     |
 | C-j    | Ent    |
