@@ -14,6 +14,8 @@ import qualified Yi.Keymap.Emacs        as E
 import           Yi.Keymap.Emacs.Utils  (findFileNewTab)
 import           Yi.Mode.Haskell
 import           Yi.Command             (searchSources)
+import           Yi.Hoogle              (hoogle, hoogleSearch)
+import           Yi.TextCompletion      (wordComplete)
 
 help :: Docopt
 help = [docopt|
@@ -47,6 +49,9 @@ publish = do
   publishAction "pwd"                pwd
   publishAction "searchSources"      searchSources
   publishAction "nextWinE"           nextWinE
+  publishAction "hoogle"             hoogle
+  publishAction "hoogleSearch"       hoogleSearch
+  publishAction "wordComplete"       wordComplete
 
 myConfig :: [Action] -> Config
 myConfig actions = defaultEmacsConfig
@@ -71,11 +76,13 @@ myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
                   , meta (spec KDown)     ?>>! nextWinE
                   , metaCh 's'            ?>>! searchSources
                   , metaCh '`'            ?>>! shellCommandE
+                  , ctrl (metaCh 'a')     ?>>! wordComplete
                   , ctrlCh 'x'            ?>>  ctrlX
                   ]
   where ctrlX = choice
                   [ char 'f'              ?>>! findFileNewTab
                   , ctrlCh 'd'            ?>>! deleteTabE
+                  , ctrlCh 'k'            ?>>! closeBufferAndWindowE
                   ]
 
 configureIndent :: AnyMode -> AnyMode
