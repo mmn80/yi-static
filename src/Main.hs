@@ -74,7 +74,17 @@ myKeymapSet = E.mkKeymap $ E.defKeymap `override` \sup _ ->
   sup { E._eKeymap = overKeymap <|| E._eKeymap sup <|> myKeymap }
 
 overKeymap :: Keymap
-overKeymap = spec KEnter ?>>! (newlineB >> adjIndent IncreaseCycle)
+overKeymap = choice [ spec KEnter       ?>>! doEnter
+                    , spec KTab         ?>>! doTab IncreaseCycle
+                    , shift (spec KTab) ?>>! doTab DecreaseCycle
+                    ]
+  where doTab :: IndentBehaviour -> EditorM ()
+        doTab b = withCurrentBuffer $ do
+                    r <- getSelectRegionB
+                    if regionIsEmpty r then adjIndent b
+                    else let d = if b == IncreaseCycle then 1 else -1
+                         in shiftIndentOfRegionB d r
+        doEnter = newlineB >> adjIndent IncreaseCycle
 
 myKeymap :: Keymap
 myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
