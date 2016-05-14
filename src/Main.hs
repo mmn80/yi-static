@@ -14,8 +14,11 @@ import qualified Yi.Keymap.Emacs        as E
 import           Yi.Keymap.Emacs.Utils  (findFileNewTab)
 import           Yi.Mode.Haskell
 import           Yi.Command             (searchSources)
-import           Yi.Hoogle              (hoogle, hoogleSearch)
+import           Yi.Hoogle              (hoogleRaw)
 import           Yi.TextCompletion      (wordComplete)
+import qualified Data.Text              as T
+import           Yi.Utils               (io)
+import qualified Yi.Rope                as R
 
 help :: Docopt
 help = [docopt|
@@ -40,18 +43,18 @@ main = do
 publish :: ConfigM ()
 publish = do
   publishAction "shellCommandE"      shellCommandE
+  publishAction "cd"                 cd
+  publishAction "pwd"                pwd
+  publishAction "searchSources"      searchSources
+  publishAction "nextWinE"           nextWinE
+  publishAction "wordComplete"       wordComplete
   publishAction "ghciSend"           ghciSend
   publishAction "ghciLoadBuffer"     ghciLoadBuffer
   publishAction "ghciInferType"      ghciInferType
   publishAction "ghciSetProcessName" ghciSetProcessName
   publishAction "ghciSetProcessArgs" ghciSetProcessArgs
-  publishAction "cd"                 cd
-  publishAction "pwd"                pwd
-  publishAction "searchSources"      searchSources
-  publishAction "nextWinE"           nextWinE
   publishAction "hoogle"             hoogle
   publishAction "hoogleSearch"       hoogleSearch
-  publishAction "wordComplete"       wordComplete
 
 myConfig :: [Action] -> Config
 myConfig actions = defaultEmacsConfig
@@ -83,7 +86,25 @@ myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
                   [ char 'f'              ?>>! findFileNewTab
                   , ctrlCh 'd'            ?>>! deleteTabE
                   , ctrlCh 'k'            ?>>! closeBufferAndWindowE
+                  , ctrlCh 'p'            ?>>! hoogle
                   ]
+
+hoogle :: YiM ()
+hoogle = do
+  word <- withCurrentBuffer $ do
+    wordRegion <- regionOfB unitWord
+    readRegionB wordRegion
+  hoogleSearch word
+
+hoogleSearch :: R.YiString -> YiM ()
+hoogleSearch src = do
+  results <- io $ hoogleRaw src R.empty
+  let r = T.break (== ' ') . R.toText <$> results
+  let mx = maximum $ T.length . fst <$> r
+  let format (p, s) = (if p == T.pack "Did" then p
+                       else T.justifyLeft (mx + 1) ' ' p)
+                      `T.append` s
+  printMsgs $ map format r
 
 configureIndent :: AnyMode -> AnyMode
 configureIndent = onMode $ \m ->

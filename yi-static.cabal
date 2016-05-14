@@ -27,5 +27,8 @@ executable yi
   build-depends:
     base             >= 4.8 && < 5,
     mtl,
+    text,
     docopt           >= 0.7,
-    yi
+    yi,
+    yi-language,
+    yi-rope

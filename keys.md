@@ -1,6 +1,6 @@
-# Keys that are wrongly mapped by vtty
+# Keys that are wrongly mapped by vty
 
-| Combo  | As     |
+| Keys   | Result |
 | ------ | ------ |
 | C-i    | Tab    |
 | C-h    | BS     |
