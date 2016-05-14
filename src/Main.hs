@@ -71,7 +71,10 @@ myConfig actions = defaultEmacsConfig
 
 myKeymapSet :: KeymapSet
 myKeymapSet = E.mkKeymap $ E.defKeymap `override` \sup _ ->
-  sup { E._eKeymap = E._eKeymap sup <|> myKeymap }
+  sup { E._eKeymap = overKeymap <|| E._eKeymap sup <|> myKeymap }
+
+overKeymap :: Keymap
+overKeymap = spec KEnter ?>>! (newlineB >> adjIndent IncreaseCycle)
 
 myKeymap :: Keymap
 myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
@@ -102,7 +105,7 @@ hoogleSearch src = do
   let r = T.break (== ' ') . R.toText <$> results
   let mx = maximum $ T.length . fst <$> r
   let format (p, s) = (if p == T.pack "Did" then p
-                       else T.justifyLeft (mx + 1) ' ' p)
+                       else T.justifyLeft mx ' ' p)
                       `T.append` s
   printMsgs $ map format r
 
