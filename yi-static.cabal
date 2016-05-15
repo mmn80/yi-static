@@ -29,6 +29,8 @@ executable yi
     mtl,
     text,
     docopt           >= 0.7,
+    pointedlist,
+    lens,
     yi,
     yi-language,
     yi-rope

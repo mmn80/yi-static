@@ -19,6 +19,11 @@ import           Yi.TextCompletion      (wordComplete)
 import qualified Data.Text              as T
 import           Yi.Utils               (io)
 import qualified Yi.Rope                as R
+import           Control.Lens           ((^.))
+import           Yi.Editor              (tabsA)
+import           Yi.Tab                 (tabLayoutManagerA)
+import qualified Data.List.PointedList  as PL
+import           Yi.Layout              (LayoutManager(..))
 
 help :: Docopt
 help = [docopt|
@@ -100,7 +105,17 @@ myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
                   , ctrlCh 'd'            ?>>! deleteTabE
                   , ctrlCh 'k'            ?>>! closeBufferAndWindowE
                   , ctrlCh 'p'            ?>>! hoogle
+                  , ctrlCh 'l'            ?>>! layoutNext
+                  , char ','              ?>>! layoutManagerNextVariantE
+                  , char '.'              ?>>! layoutManagerPreviousVariantE
                   ]
+
+layoutNext :: EditorM ()
+layoutNext = do
+  layoutManagersNextE
+  e <- get
+  let l = e ^. tabsA . PL.focus . tabLayoutManagerA
+  printMsg . T.pack $ describeLayout l
 
 hoogle :: YiM ()
 hoogle = do
