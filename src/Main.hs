@@ -20,7 +20,6 @@ import qualified Data.Text              as T
 import           Yi.Utils               (io)
 import qualified Yi.Rope                as R
 import           Control.Lens           ((^.))
-import           Yi.Editor              (tabsA)
 import           Yi.Tab                 (tabLayoutManagerA)
 import qualified Data.List.PointedList  as PL
 import           Yi.Layout              (LayoutManager(..))
@@ -47,19 +46,20 @@ main = do
 
 publish :: ConfigM ()
 publish = do
-  publishAction "shellCommandE"      shellCommandE
-  publishAction "cd"                 cd
-  publishAction "pwd"                pwd
-  publishAction "searchSources"      searchSources
-  publishAction "nextWinE"           nextWinE
-  publishAction "wordComplete"       wordComplete
-  publishAction "ghciSend"           ghciSend
-  publishAction "ghciLoadBuffer"     ghciLoadBuffer
-  publishAction "ghciInferType"      ghciInferType
-  publishAction "ghciSetProcessName" ghciSetProcessName
-  publishAction "ghciSetProcessArgs" ghciSetProcessArgs
-  publishAction "hoogle"             hoogle
-  publishAction "hoogleSearch"       hoogleSearch
+  publishAction "shellCommandE"             shellCommandE
+  publishAction "cd"                        cd
+  publishAction "pwd"                       pwd
+  publishAction "searchSources"             searchSources
+  publishAction "nextWinE"                  nextWinE
+  publishAction "acceptedInputsOtherWindow" acceptedInputsOtherWindow
+  publishAction "wordComplete"              wordComplete
+  publishAction "ghciSend"                  ghciSend
+  publishAction "ghciLoadBuffer"            ghciLoadBuffer
+  publishAction "ghciInferType"             ghciInferType
+  publishAction "ghciSetProcessName"        ghciSetProcessName
+  publishAction "ghciSetProcessArgs"        ghciSetProcessArgs
+  publishAction "hoogle"                    hoogle
+  publishAction "hoogleSearch"              hoogleSearch
 
 myConfig :: [Action] -> Config
 myConfig actions = defaultEmacsConfig
