@@ -1,13 +1,22 @@
 {-# LANGUAGE QuasiQuotes #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 import           Control.Applicative    ((<|>))
 import           Control.Monad          (when)
-import           Control.Monad.State    (get, put)
+import           Control.Monad.State    (get, put, gets)
 import           Control.Monad.State    (execStateT)
+import           Control.Lens           ((^.), use)
 import           Data.List              (intersperse)
+import           Data.Char              (ord)
+import           Data.Monoid            ((<>))
+import qualified Data.Text              as T
+import qualified Data.List.PointedList  as PL
+import           Numeric                (showHex)
 import           System.Console.Docopt
 import           System.Environment     (getArgs)
 import           Yi
+import qualified Yi.Rope                as R
 import           Yi.Command             (shellCommandE)
 import           Yi.Config.Simple.Types (ConfigM (..))
 import qualified Yi.Keymap.Emacs        as E
@@ -16,12 +25,8 @@ import           Yi.Mode.Haskell
 import           Yi.Command             (searchSources)
 import           Yi.Hoogle              (hoogleRaw)
 import           Yi.TextCompletion      (wordComplete)
-import qualified Data.Text              as T
 import           Yi.Utils               (io)
-import qualified Yi.Rope                as R
-import           Control.Lens           ((^.))
-import           Yi.Tab                 (tabLayoutManagerA)
-import qualified Data.List.PointedList  as PL
+import           Yi.Tab                 (tabLayoutManagerA, tabLayout)
 import           Yi.Layout              (LayoutManager(..))
 
 help :: Docopt
@@ -63,7 +68,7 @@ publish = do
 
 myConfig :: [Action] -> Config
 myConfig actions = defaultEmacsConfig
-  { modeTable = fmap configureIndent (modeTable defaultEmacsConfig)
+  { modeTable = fmap (configureIndent . configureModeline) (modeTable defaultEmacsConfig)
   , defaultKm = myKeymapSet
   , configCheckExternalChangesObsessively = False
   , startActions =
@@ -105,17 +110,21 @@ myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
                   , ctrlCh 'd'            ?>>! deleteTabE
                   , ctrlCh 'k'            ?>>! closeBufferAndWindowE
                   , ctrlCh 'p'            ?>>! hoogle
+                  , char 'l'              ?>>! layoutDescribe
                   , ctrlCh 'l'            ?>>! layoutNext
-                  , char ','              ?>>! layoutManagerNextVariantE
-                  , char '.'              ?>>! layoutManagerPreviousVariantE
+                  , char '.'              ?>>! layoutVariantNext
+                  , char ','              ?>>! layoutVariantPrev
                   ]
+        layoutNext        = layoutManagersNextE >> layoutDescribe
+        layoutVariantNext = layoutManagerNextVariantE >> layoutDescribe
+        layoutVariantPrev = layoutManagerPreviousVariantE >> layoutDescribe
 
-layoutNext :: EditorM ()
-layoutNext = do
-  layoutManagersNextE
+layoutDescribe :: EditorM ()
+layoutDescribe = do
   e <- get
-  let l = e ^. tabsA . PL.focus . tabLayoutManagerA
-  printMsg . T.pack $ describeLayout l
+  let l  = tabLayout $ e ^. tabsA . PL.focus
+  let lm = e ^. tabsA . PL.focus . tabLayoutManagerA
+  printMsgs $ T.pack <$> [ describeLayout lm, show l ]
 
 hoogle :: YiM ()
 hoogle = do
@@ -129,7 +138,7 @@ hoogleSearch src = do
   results <- io $ hoogleRaw src R.empty
   let r = T.break (== ' ') . R.toText <$> results
   let mx = maximum $ T.length . fst <$> r
-  let format (p, s) = (if p == T.pack "Did" then p
+  let format (p, s) = (if p == "Did" then p
                        else T.justifyLeft mx ' ' p)
                       `T.append` s
   printMsgs $ map format r
@@ -141,3 +150,34 @@ configureIndent = onMode $ \m ->
                                           , tabSize    = 2
                                           }
     }
+
+configureModeline :: AnyMode -> AnyMode
+configureModeline = onMode $ \m -> m { modeModeLine = myModeLine }
+  where
+    myModeLine prefix = do
+      col       <- curCol
+      pos       <- pointB
+      ln        <- curLn
+      p         <- pointB
+      s         <- sizeB
+      curChar   <- readB
+      ro        <-use readOnlyA
+      modeNm    <- gets (withMode0 modeName)
+      unchanged <- gets isUnchangedBuffer
+      enc       <- use encodingConverterNameA >>= return . \case
+                     Nothing -> mempty
+                     Just cn -> T.pack $ R.unCn cn
+      let pct | pos == 0 || s == 0 = " Top"
+              | pos == s = " Bot"
+              | otherwise = getPercent p s
+          changed   = if unchanged then "-" else "*"
+          readOnly' = if ro then "%" else changed
+          hexxed    = T.pack $ showHex (ord curChar) ""
+          hexChar   = "0x" <> T.justifyRight 2 '0' hexxed
+          toT       = T.pack . show
+      nm <- gets $ shortIdentString (length prefix)
+      return $ T.concat [ enc, " ", readOnly', changed, " ", nm, "    "
+                        , pct, " ", hexChar, " ", T.justifyLeft 9 ' ' $
+                            "(" <> toT ln <> "," <> toT col <> ")"
+                        , "    ", modeNm
+                        ]
