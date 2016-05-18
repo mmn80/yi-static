@@ -3,13 +3,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import           Control.Applicative    ((<|>))
-import           Control.Monad          (when)
+import           Control.Monad          (when, join)
 import           Control.Monad.State    (get, put, gets)
 import           Control.Monad.State    (execStateT)
-import           Control.Lens           ((^.), use)
-import           Data.List              (intersperse)
+import           Control.Lens           ((^.), to, use)
+import           Data.List              (intersperse, find)
 import           Data.Char              (ord)
 import           Data.Monoid            ((<>))
+import           Data.Maybe             (isJust)
 import qualified Data.Text              as T
 import qualified Data.List.PointedList  as PL
 import           Numeric                (showHex)
@@ -26,8 +27,8 @@ import           Yi.Command             (searchSources)
 import           Yi.Hoogle              (hoogleRaw)
 import           Yi.TextCompletion      (wordComplete)
 import           Yi.Utils               (io)
-import           Yi.Tab                 (tabLayoutManagerA, tabLayout)
-import           Yi.Layout              (LayoutManager(..))
+import           Yi.Layout              (Layout(..))
+import           Yi.Tab                 (tabLayout)
 
 help :: Docopt
 help = [docopt|
@@ -110,22 +111,28 @@ myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
                   , ctrlCh 'd'            ?>>! deleteTabE
                   , ctrlCh 'k'            ?>>! closeBufferAndWindowE
                   , ctrlCh 'p'            ?>>! hoogle
-                  , char 'l'              ?>>! layoutDescribe
-                  , ctrlCh 'l'            ?>>! layoutNext
-                  , char '.'              ?>>! layoutVariantNext
-                  , char ','              ?>>! layoutVariantPrev
+                  , char 'l'              ?>>! layoutManagersPrintMsgE
+                  , ctrlCh 'l'            ?>>! layoutManagersNextE
+                  , char '.'              ?>>! layoutManagerNextVariantE
+                  , char ','              ?>>! layoutManagerPreviousVariantE
+                  , char '-'              ?>>! moveDivider False
+                  , char '='              ?>>! moveDivider True
                   ]
-        layoutNext        = layoutManagersNextE >> layoutDescribe
-        layoutVariantNext = layoutManagerNextVariantE >> layoutDescribe
-        layoutVariantPrev = layoutManagerPreviousVariantE >> layoutDescribe
 
-layoutDescribe :: EditorM ()
-layoutDescribe = do
+moveDivider :: Bool -> EditorM ()
+moveDivider dir = do
   e <- get
-  let l  = tabLayout $ e ^. tabsA . PL.focus
-  let lm = e ^. tabsA . PL.focus . tabLayoutManagerA
-  printMsgs $ T.pack <$> [ describeLayout lm, show l ]
-
+  let l = e ^. tabsA . PL.focus . to tabLayout
+      mbr = findFirstDivider l
+      findFirstDivider (Pair _ p r _ _) = Just (r, p)
+      findFirstDivider (Stack _ ws) = join . find (isJust)
+                                    . map (findFirstDivider . fst) $ ws
+      findFirstDivider _ = Nothing
+      clamp = min 0.9 . max 0.1
+  maybe (return ()) 
+        (\(r, p) -> setDividerPosE r . clamp $ p + if dir then 0.2 else (-0.2))
+        mbr
+  
 hoogle :: YiM ()
 hoogle = do
   word <- withCurrentBuffer $ do
@@ -166,7 +173,9 @@ configureModeline = onMode $ \m -> m { modeModeLine = myModeLine }
       unchanged <- gets isUnchangedBuffer
       enc       <- use encodingConverterNameA >>= return . \case
                      Nothing -> mempty
-                     Just cn -> T.pack $ R.unCn cn
+                     Just cn -> T.pack $ case R.unCn cn of
+                                           "UTF-8" -> "U"
+                                           other   -> other
       let pct | pos == 0 || s == 0 = " Top"
               | pos == s = " Bot"
               | otherwise = getPercent p s
@@ -176,7 +185,7 @@ configureModeline = onMode $ \m -> m { modeModeLine = myModeLine }
           hexChar   = "0x" <> T.justifyRight 2 '0' hexxed
           toT       = T.pack . show
       nm <- gets $ shortIdentString (length prefix)
-      return $ T.concat [ enc, " ", readOnly', changed, " ", nm, "    "
+      return $ T.concat [ enc, readOnly', changed, " ", nm, "    "
                         , pct, " ", hexChar, " ", T.justifyLeft 9 ' ' $
                             "(" <> toT ln <> "," <> toT col <> ")"
                         , "    ", modeNm
