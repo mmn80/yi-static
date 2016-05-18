@@ -1,7 +1,7 @@
 packages:
 - '.'
-extra-deps:
-- yi-0.12.5
+- location: ../yi
+  extra-dep: true
 flags:
   yi:
     hint: false
