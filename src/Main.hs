@@ -80,7 +80,13 @@ myConfig actions = defaultEmacsConfig
         put e { maxStatusHeight = 30 }))
     : actions
   , configRegionStyle = Exclusive
+  , configUI = let cui = configUI defaultEmacsConfig
+               in cui { configTheme = updateTheme $ configTheme cui }
   }
+
+updateTheme :: Theme -> Theme
+updateTheme t = t `override` \sup _ ->
+  sup { modelineAttributes = (modelineAttributes sup) { foreground = lightGrey }}
 
 myKeymapSet :: KeymapSet
 myKeymapSet = E.mkKeymap $ E.defKeymap `override` \sup _ ->
@@ -224,5 +230,5 @@ configureModeline = onMode $ \m -> m { modeModeLine = myModeLine }
       return $ T.concat [ enc, readOnly', changed, " ", nm, "    "
                         , pct, " ", hexChar, " ", T.justifyLeft 9 ' ' $
                             "(" <> toT ln <> "," <> toT col <> ")"
-                        , "    ", modeNm
+                        , "  ", modeNm
                         ]
