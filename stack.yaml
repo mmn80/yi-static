@@ -2,6 +2,8 @@ packages:
 - '.'
 - location: ../yi
   extra-dep: true
+extra-deps:
+- Hclip-3.0.0.3
 flags:
   yi:
     hint: false

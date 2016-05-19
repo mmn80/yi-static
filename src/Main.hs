@@ -6,8 +6,9 @@ import           Control.Applicative    ((<|>))
 import           Control.Monad          (when, join)
 import           Control.Monad.State    (get, put, gets)
 import           Control.Monad.State    (execStateT)
-import           Control.Lens           ((^.), to, use)
+import           Control.Lens           ((^.), (%=), to, use, uses, assign)
 import           Data.List              (intersperse, find)
+import           Data.List.NonEmpty     (NonEmpty ((:|)))
 import           Data.Char              (ord)
 import           Data.Monoid            ((<>))
 import           Data.Maybe             (isJust)
@@ -16,19 +17,20 @@ import qualified Data.List.PointedList  as PL
 import           Numeric                (showHex)
 import           System.Console.Docopt
 import           System.Environment     (getArgs)
+import           System.Hclip
 import           Yi
 import qualified Yi.Rope                as R
-import           Yi.Command             (shellCommandE)
+import           Yi.Command             (shellCommandE, searchSources)
 import           Yi.Config.Simple.Types (ConfigM (..))
 import qualified Yi.Keymap.Emacs        as E
 import           Yi.Keymap.Emacs.Utils  (findFileNewTab)
 import           Yi.Mode.Haskell
-import           Yi.Command             (searchSources)
 import           Yi.Hoogle              (hoogleRaw)
 import           Yi.TextCompletion      (wordComplete)
 import           Yi.Utils               (io)
 import           Yi.Layout              (Layout(..))
 import           Yi.Tab                 (tabLayout)
+import           Yi.KillRing            (Killring (_krContents), krPut)
 
 help :: Docopt
 help = [docopt|
@@ -86,6 +88,9 @@ myKeymapSet = E.mkKeymap $ E.defKeymap `override` \sup _ ->
 
 overKeymap :: Keymap
 overKeymap = choice [ spec KEnter       ?>>! doEnter
+                    , ctrlCh 'w'        ?>>! doCut
+                    , metaCh 'w'        ?>>! doCopy
+                    , ctrlCh 'y'        ?>>! doPaste
                     , spec KTab         ?>>! doTab IncreaseCycle
                     , shift (spec KTab) ?>>! doTab DecreaseCycle
                     ]
@@ -96,6 +101,37 @@ overKeymap = choice [ spec KEnter       ?>>! doEnter
                     else let d = if b == IncreaseCycle then 1 else -1
                          in shiftIndentOfRegionB d r
         doEnter = newlineB >> adjIndent IncreaseCycle
+
+doCut :: YiM ()
+doCut = do
+  text <- withCurrentBuffer $ do
+    r <- getSelectRegionB
+    text <- readRegionB r
+    if regionStart r == regionEnd r then bkillWordB else deleteRegionB r
+    return text
+  io . setClipboard $ R.toString text
+
+killringPut :: Direction -> R.YiString -> EditorM ()
+killringPut dir s = killringA %= krPut dir s
+
+doCopy :: YiM ()
+doCopy = do
+  (r, text) <- withCurrentBuffer $ do
+    r <- getSelectRegionB
+    text <- readRegionB r
+    assign highlightSelectionA False
+    return (r, text)
+  withEditor $ killringPut (regionDirection r) text
+  io . setClipboard $ R.toString text
+
+doPaste :: YiM ()
+doPaste = do
+  t <- io getClipboard
+  let text = R.fromString t
+  withEditor $ do
+    text' :| _ <- uses killringA _krContents
+    when (text' /= text) $ killringPut Forward text
+    withCurrentBuffer $ pointB >>= setSelectionMarkPointB >> insertN text
 
 myKeymap :: Keymap
 myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
