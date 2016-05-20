@@ -3,15 +3,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import           Control.Applicative    ((<|>))
-import           Control.Monad          (when, join)
+import           Control.Monad          (when)
 import           Control.Monad.State    (get, put, gets)
 import           Control.Monad.State    (execStateT)
-import           Control.Lens           ((^.), (%=), to, use, uses, assign)
-import           Data.List              (intersperse, find)
+import           Control.Lens           ((%=), use, uses, assign)
+import           Data.List              (intersperse)
 import           Data.List.NonEmpty     (NonEmpty ((:|)))
 import           Data.Char              (ord)
 import           Data.Monoid            ((<>))
-import           Data.Maybe             (isJust)
 import qualified Data.Text              as T
 import qualified Data.List.PointedList  as PL
 import           Numeric                (showHex)
@@ -28,9 +27,10 @@ import           Yi.Mode.Haskell
 import           Yi.Hoogle              (hoogleRaw)
 import           Yi.TextCompletion      (wordComplete)
 import           Yi.Utils               (io)
-import           Yi.Layout              (Layout(..))
-import           Yi.Tab                 (tabLayout)
+import           Yi.Layout              (findDivider)
+import           Yi.Tab                 (tabLayout, tabDividerPositionA, tabFocus)
 import           Yi.KillRing            (Killring (_krContents), krPut)
+import           Yi.Window              (wkey)
 
 help :: Docopt
 help = [docopt|
@@ -113,7 +113,7 @@ doCut = do
   text <- withCurrentBuffer $ do
     r <- getSelectRegionB
     text <- readRegionB r
-    if regionStart r == regionEnd r then bkillWordB else deleteRegionB r
+    deleteRegionB r
     return text
   io . setClipboard $ R.toString text
 
@@ -163,16 +163,13 @@ myKeymap = choice [ ctrl (spec KPageDown) ?>>! previousTabE
 
 moveDivider :: Bool -> EditorM ()
 moveDivider dir = do
-  e <- get
-  let l = e ^. tabsA . PL.focus . to tabLayout
-      mbr = findFirstDivider l
-      findFirstDivider (Pair _ p r _ _) = Just (r, p)
-      findFirstDivider (Stack _ ws) = join . find (isJust)
-                                    . map (findFirstDivider . fst) $ ws
-      findFirstDivider _ = Nothing
+  tab <- use $ tabsA . PL.focus
+  let l = tabLayout tab
+      mbr = findDivider (Just . wkey $ tabFocus tab) l
       clamp = min 0.9 . max 0.1
+      dt = if dir then 0.2 else (-0.2)
   maybe (return ()) 
-        (\(r, p) -> setDividerPosE r . clamp $ p + if dir then 0.2 else (-0.2))
+        (\ref -> tabsA . PL.focus . tabDividerPositionA ref %= clamp . (+ dt))
         mbr
   
 hoogle :: YiM ()
