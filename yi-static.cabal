@@ -28,6 +28,7 @@ executable yi
     base             >= 4.8 && < 5,
     mtl,
     text,
+    vector,
     semigroups,
     comonad,
     docopt           >= 0.7,
