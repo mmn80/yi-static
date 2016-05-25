@@ -4,6 +4,7 @@ import Control.Comonad
 import Data.Monoid ((<>))
 import Data.Function (fix)
 import VectorTape
+import qualified RoseZipper as Z
 
 data Rect d = Rect { left :: d, top :: d, width :: d, height :: d }
 
@@ -32,6 +33,7 @@ loeb fs = xs where xs = fmap ($ xs) fs
 -- kfix :: ComonadApply w => w (w a -> a) -> w a
 -- kfix w = fix $ \u -> w <@> duplicate u
 -- kfix w = fix $ (w <@>) . duplicate
+-- fix f = let x = f x in x
 
 evaluateF :: (ComonadApply w, Functor f) => w (f (w (f a) -> a)) -> w (f a)
 evaluateF fs = fix $ (<@> fs) . fmap (fmap . flip ($)) . duplicate
