@@ -35,5 +35,8 @@ loeb fs = xs where xs = fmap ($ xs) fs
 -- kfix w = fix $ (w <@>) . duplicate
 -- fix f = let x = f x in x
 
+-- No pattern matching in duplicate or <@>, or else kfix wont work!
+-- Must be lazy!
+
 evaluateF :: (ComonadApply w, Functor f) => w (f (w (f a) -> a)) -> w (f a)
 evaluateF fs = fix $ (<@> fs) . fmap (fmap . flip ($)) . duplicate
