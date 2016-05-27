@@ -7,4 +7,4 @@ extra-deps:
 flags:
   yi:
     hint: false
-resolver: lts-5.4
+resolver: lts-6.0
