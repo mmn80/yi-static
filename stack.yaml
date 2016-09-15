@@ -1,10 +1,10 @@
 packages:
 - '.'
-- location: ../yi
-  extra-dep: true
+# - location: ../yi
+#   extra-dep: true
 extra-deps:
-- Hclip-3.0.0.3
+- yi-0.12.6
 flags:
   yi:
     hint: false
-resolver: lts-6.0
+resolver: lts-7.0

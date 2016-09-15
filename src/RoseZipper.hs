@@ -30,8 +30,9 @@ toChildNo :: Int -> Layout a -> Layout a
 toChildNo idx (Layout (Node x ts) cs) = Layout t (Node' x ls rs : cs)
   where (ls, t : rs) = splitAt idx ts
 
-instance Comonad Layout where
-  extract (Layout (Node x _) _) = x
-  duplicate l@(Layout (Node x ts) cs) =
-    Layout (Node l (_1 <$> ts)) (_2 <$> cs)
+--instance Comonad Layout where
+--  extract (Layout (Node x _) _) = x
+--  duplicate l@(Layout (Node x ts) cs) =
+--    Layout (Node l (_1 <$> ts)) (_2 <$> cs)
+
 -- _1: do not use `toChildNo`, but fold manually and use the implicit context

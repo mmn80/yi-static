@@ -11,7 +11,7 @@ data Rect d = Rect { left :: d, top :: d, width :: d, height :: d }
 instance (Ord d, Num d) => Monoid (Rect d) where
   mempty = Rect 0 0 0 0
   (Rect x y dx dy) `mappend` (Rect x' y' dx' dy') =
-      Rect (max x x') (max y y') (sz x x' dx dx') (sz y y' dy dy') 
+      Rect (max x x') (max y y') (sz x x' dx dx') (sz y y' dy dy')
     where sz a a' s s' = max 0 $ min (a + s) (a' + s') - max a a'
 
 data Layout a = Node { cell :: a, parent :: Maybe (Layout a) }
@@ -35,8 +35,9 @@ loeb fs = xs where xs = fmap ($ xs) fs
 -- kfix w = fix $ (w <@>) . duplicate
 -- fix f = let x = f x in x
 
--- No pattern matching in duplicate or <@>, or else kfix wont work!
+-- No pattern matching in duplicate, or else kfix wont work!
 -- Must be lazy!
+-- K's <@> on Tape does pattern matching, but duplicate uses iterate + moves
 
 evaluateF :: (ComonadApply w, Functor f) => w (f (w (f a) -> a)) -> w (f a)
 evaluateF fs = fix $ (<@> fs) . fmap (fmap . flip ($)) . duplicate
